@@ -1,0 +1,31 @@
+dataset,tool,mode,eoo_raw_km2,aoo_km2,notes
+antimeridian-local-laea,gdauby/ConR,default-spheroid,243.5,16,
+antimeridian-local-laea,gdauby/ConR,planar-cea,436263,16,
+antimeridian-local-laea,go-iucn-eoo-aoo,iucn-cea,436262.5896382405,16,
+antimeridian-local-laea,go-iucn-eoo-aoo,local-laea,242.50282819926466,16,
+antimeridian-local-laea,vicentecalfo/eoo-aoo-calculator,package-default,439023.7223915208,0,
+brazil-example,gdauby/ConR,default-spheroid,15722,12,
+brazil-example,gdauby/ConR,planar-cea,15631.5,12,
+brazil-example,go-iucn-eoo-aoo,iucn-cea,15631.477162575591,12,
+brazil-example,go-iucn-eoo-aoo,local-laea,15678.73789460172,12,
+brazil-example,vicentecalfo/eoo-aoo-calculator,package-default,15707.505680367984,12,
+collinear,gdauby/ConR,default-spheroid,0.21099999999999999,12,ConR documents jitter treatment for collinear input
+collinear,gdauby/ConR,planar-cea,0.0000060000000000000002,12,ConR documents jitter treatment for collinear input
+collinear,go-iucn-eoo-aoo,iucn-cea,,12,raw EOO null with status collinear
+collinear,go-iucn-eoo-aoo,local-laea,,12,raw EOO null with status collinear
+collinear,vicentecalfo/eoo-aoo-calculator,package-default,0,12,
+duplicate-provenance,gdauby/ConR,default-spheroid,,4,
+duplicate-provenance,gdauby/ConR,planar-cea,,4,
+duplicate-provenance,go-iucn-eoo-aoo,iucn-cea,,4,raw EOO unavailable
+duplicate-provenance,go-iucn-eoo-aoo,local-laea,,4,raw EOO unavailable
+duplicate-provenance,vicentecalfo/eoo-aoo-calculator,package-default,0,4,
+single-point-default,gdauby/ConR,default-spheroid,,4,
+single-point-default,gdauby/ConR,planar-cea,,4,
+single-point-default,go-iucn-eoo-aoo,iucn-cea,,4,raw EOO unavailable
+single-point-default,go-iucn-eoo-aoo,local-laea,,4,raw EOO unavailable
+single-point-default,vicentecalfo/eoo-aoo-calculator,package-default,0,4,
+tiny-triangle-eoo-floor,gdauby/ConR,default-spheroid,0.000062000000000000003,4,
+tiny-triangle-eoo-floor,gdauby/ConR,planar-cea,0.000062000000000000003,4,
+tiny-triangle-eoo-floor,go-iucn-eoo-aoo,iucn-cea,0.00006154536039644392,4,
+tiny-triangle-eoo-floor,go-iucn-eoo-aoo,local-laea,0.00006154536039647489,4,
+tiny-triangle-eoo-floor,vicentecalfo/eoo-aoo-calculator,package-default,0.00006196014515233713,12,

@@ -1,0 +1,93 @@
+name: Native GDAL tests
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    name: Linux / Go ${{ matrix.go }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+      - run: sudo apt-get update && sudo apt-get install -y libgdal-dev libproj-dev pkg-config g++
+      - run: make doctor check build
+      - name: Validate versioned JSON documents
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          paths = list(Path('schemas').glob('*.json')) + [Path('testdata/reference/cases.json')]
+          for path in paths:
+              with path.open(encoding='utf-8') as f:
+                  json.load(f)
+              print('valid JSON:', path)
+          PY
+      - run: ./bin/eoo-aoo calc --in examples/brazil.csv --out /tmp/result.json --gpkg /tmp/result.gpkg --geojson-dir /tmp/maps --html /tmp/result.html
+      - run: ./bin/eoo-aoo calc --in examples/occurrences.json --out /tmp/result-from-json.json
+      - run: ./bin/eoo-aoo calc --in examples/occurrences.geojson --out /tmp/result-from-geojson.json
+      - run: ./bin/eoo-aoo compare --in examples/brazil.csv --out /tmp/comparison.json
+      - run: ./bin/eoo-aoo batch --in examples/batch.csv --out /tmp/batch.json
+      - name: Fuzz parser smoke test
+        if: matrix.go == '1.27.x'
+        run: go test -run '^$' -fuzz '^FuzzReadJSON$' -fuzztime=2s ./internal/input
+      - name: Fuzz calculation smoke test
+        if: matrix.go == '1.27.x'
+        run: go test -run '^$' -fuzz '^FuzzCalculateWGS84$' -fuzztime=2s .
+
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: true
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          path-type: inherit
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-dlfcn
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-gdal
+            mingw-w64-ucrt-x86_64-proj
+      - name: Test and build with native Windows GDAL
+        shell: msys2 {0}
+        env:
+          CGO_ENABLED: '1'
+          GOOS: windows
+          GOARCH: amd64
+          CC: gcc
+          PROJ_NETWORK: 'OFF'
+        run: |
+          set -euo pipefail
+          pkg-config --modversion gdal
+          pkg-config --modversion proj
+          # MSYS2 GDAL/PROJ need their resource directories as native Windows paths.
+          export GDAL_DATA="$(cygpath -w /ucrt64/share/gdal)"
+          export PROJ_DATA="$(cygpath -w /ucrt64/share/proj)"
+          go test ./...
+          go build -buildvcs=false -trimpath -o bin/eoo-aoo.exe ./cmd/eoo-aoo
+          bin/eoo-aoo.exe version
+          bin/eoo-aoo.exe calc --in examples/brazil.csv --out /tmp/eoo-result.json
+          bin/eoo-aoo.exe calc --in examples/occurrences.json --out /tmp/eoo-result-from-json.json
+          bin/eoo-aoo.exe calc --in examples/occurrences.geojson --out /tmp/eoo-result-from-geojson.json
+
+  container:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t eoo-aoo:ci .
+      - run: docker run --rm eoo-aoo:ci version

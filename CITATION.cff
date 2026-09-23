@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, cite the version and record the projection strategy, parameters, and GDAL/PROJ versions."
+type: software
+title: "go-iucn-eoo-aoo: distribution metrics with Go and GDAL/PROJ"
+version: 0.1.0
+date-released: 2026-09-22
+authors:
+  - family-names: "Jordão"
+    given-names: "Lucas Sá Barreto"
+license: MIT
+repository-code: "https://github.com/lsbjordao/go-iucn-eoo-aoo"

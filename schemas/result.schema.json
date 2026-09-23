@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/result.schema.json",
+  "title": "go-iucn-eoo-aoo result schema v1",
+  "type": "object",
+  "required": ["schema_version", "software_version", "gdal_version", "proj_version", "input_sha256", "input_records", "unique_coordinates", "duplicate_records", "config", "projection", "eoo", "aoo", "warnings"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "software_version": {"type": "string"},
+    "gdal_version": {"type": "string"},
+    "proj_version": {"type": "string"},
+    "taxon": {"type": "string"},
+    "input_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "input_records": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "unique_coordinates": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "duplicate_records": {"type": "integer", "minimum": 0},
+    "config": {"$ref": "#/$defs/config"},
+    "projection": {"$ref": "#/$defs/projection"},
+    "eoo": {"$ref": "#/$defs/eoo"},
+    "aoo": {"$ref": "#/$defs/aoo"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "cells": {"type": "array", "items": {"$ref": "#/$defs/cell"}},
+    "points": {"type": "array", "items": {"$ref": "#/$defs/usedPoint"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "pair": {
+      "type": "array",
+      "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "config": {
+      "type": "object",
+      "required": ["input_crs", "projection_strategy", "cell_size_m", "grid_mode", "grid_steps", "origin_m"],
+      "properties": {
+        "input_crs": {"type": "string"},
+        "projection_strategy": {"enum": ["local-laea", "iucn-cea"]},
+        "center": {"$ref": "#/$defs/pair"},
+        "cell_size_m": {"type": "number", "exclusiveMinimum": 0},
+        "grid_mode": {"enum": ["auto", "exact", "sampled", "fixed"]},
+        "grid_steps": {"type": "integer", "minimum": 1},
+        "origin_m": {"$ref": "#/$defs/pair"}
+      },
+      "additionalProperties": false
+    },
+    "projection": {
+      "type": "object",
+      "required": ["strategy", "reference", "input_crs", "input_wkt", "analysis_proj", "analysis_wkt", "center_lon_lat", "center_method", "max_angular_distance_deg", "axis_order"],
+      "properties": {
+        "strategy": {"enum": ["local-laea", "iucn-cea"]},
+        "reference": {"type": "string"},
+        "input_crs": {"type": "string"},
+        "input_wkt": {"type": "string"},
+        "analysis_proj": {"type": "string"},
+        "analysis_wkt": {"type": "string"},
+        "center_lon_lat": {"$ref": "#/$defs/pair"},
+        "center_method": {"type": "string"},
+        "max_angular_distance_deg": {"type": "number", "minimum": 0},
+        "axis_order": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "eoo": {
+      "type": "object",
+      "required": ["raw_area_km2", "assessment_area_km2", "status", "adjusted_to_aoo"],
+      "properties": {
+        "raw_area_km2": {"type": ["number", "null"], "minimum": 0},
+        "assessment_area_km2": {"type": "number", "minimum": 0},
+        "status": {"enum": ["ok", "insufficient_unique_points", "collinear", "numerically_degenerate"]},
+        "adjusted_to_aoo": {"type": "boolean"},
+        "hull_wkt": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "aoo": {
+      "type": "object",
+      "required": ["area_km2", "occupied_cells", "cell_size_m", "iucn_2km_scale", "grid_mode", "origin_m", "candidate_origins", "min_cells", "max_cells", "complete_translation_search", "orientation", "boundary_rule"],
+      "properties": {
+        "area_km2": {"type": "number", "exclusiveMinimum": 0},
+        "occupied_cells": {"type": "integer", "minimum": 1},
+        "cell_size_m": {"type": "number", "exclusiveMinimum": 0},
+        "iucn_2km_scale": {"type": "boolean"},
+        "grid_mode": {"enum": ["exact", "sampled", "fixed"]},
+        "origin_m": {"$ref": "#/$defs/pair"},
+        "candidate_origins": {"type": "integer", "minimum": 1},
+        "min_cells": {"type": "integer", "minimum": 1},
+        "max_cells": {"type": "integer", "minimum": 1},
+        "complete_translation_search": {"type": "boolean"},
+        "orientation": {"type": "string"},
+        "boundary_rule": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "cell": {
+      "type": "object",
+      "required": ["column", "row", "unique_points", "bounds_m"],
+      "properties": {
+        "column": {"type": "integer"},
+        "row": {"type": "integer"},
+        "unique_points": {"type": "integer", "minimum": 1},
+        "bounds_m": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 4,
+          "maxItems": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "point": {
+      "type": "object",
+      "required": ["lon", "lat"],
+      "properties": {
+        "lon": {"type": "number"},
+        "lat": {"type": "number"},
+        "id": {"type": "string"},
+        "taxon": {"type": "string"},
+        "properties": {"type": ["object", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "usedPoint": {
+      "type": "object",
+      "required": ["lon", "lat", "x_m", "y_m", "input_indices", "records"],
+      "properties": {
+        "lon": {"type": "number", "minimum": -180, "maximum": 180},
+        "lat": {"type": "number", "minimum": -90, "maximum": 90},
+        "x_m": {"type": "number"},
+        "y_m": {"type": "number"},
+        "input_indices": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 1},
+        "records": {"type": "array", "items": {"$ref": "#/$defs/point"}, "minItems": 1}
+      },
+      "additionalProperties": false
+    }
+  }
+}

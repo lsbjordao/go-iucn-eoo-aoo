@@ -1,0 +1,8 @@
+{
+  "input_crs": "EPSG:4326",
+  "projection_strategy": "local-laea",
+  "center": [-54, -15],
+  "cell_size_m": 2000,
+  "grid_mode": "fixed",
+  "origin_m": [0, 0]
+}

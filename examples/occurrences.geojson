@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "demo-001",
+      "properties": {"taxon": "Mimosa demonstrativa"},
+      "geometry": {"type": "Point", "coordinates": [-43.2, -22.9]}
+    },
+    {
+      "type": "Feature",
+      "id": "demo-002",
+      "properties": {"taxon": "Mimosa demonstrativa"},
+      "geometry": {"type": "Point", "coordinates": [-44.3, -21.5]}
+    },
+    {
+      "type": "Feature",
+      "id": "demo-003",
+      "properties": {"taxon": "Mimosa demonstrativa"},
+      "geometry": {"type": "Point", "coordinates": [-42.9, -20.8]}
+    }
+  ]
+}

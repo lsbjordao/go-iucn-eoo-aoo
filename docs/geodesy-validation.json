@@ -1,0 +1,39 @@
+{
+  "pyproj_version": "3.8.0",
+  "pyproj_proj_version": "9.8.1",
+  "checks": [
+    {
+      "center_latitude": 0,
+      "expected_km2": 10000,
+      "go_gdal_km2": 9999.999999999838,
+      "shapely_km2": 9999.999999999838,
+      "geodesic_densified_km2": 10000.00000030934,
+      "relative_geodesic_difference": 3.0950104701333247e-11
+    },
+    {
+      "center_latitude": -23,
+      "expected_km2": 10000,
+      "go_gdal_km2": 9999.999999999878,
+      "shapely_km2": 9999.999999999878,
+      "geodesic_densified_km2": 10000.000000308704,
+      "relative_geodesic_difference": 3.0882620194461575e-11
+    },
+    {
+      "center_latitude": 70,
+      "expected_km2": 10000,
+      "go_gdal_km2": 10000.00000000131,
+      "shapely_km2": 10000.00000000131,
+      "geodesic_densified_km2": 10000.00000030559,
+      "relative_geodesic_difference": 3.04280547425111e-11
+    },
+    {
+      "center_latitude": -85,
+      "expected_km2": 10000,
+      "go_gdal_km2": 10000.000000001637,
+      "shapely_km2": 10000.000000001637,
+      "geodesic_densified_km2": 10000.000000305203,
+      "relative_geodesic_difference": 3.035656845895077e-11
+    }
+  ],
+  "status": "passed"
+}

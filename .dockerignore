@@ -1,0 +1,5 @@
+bin
+.git
+*.zip
+*.gpkg
+coverage.out

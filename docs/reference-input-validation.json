@@ -1,0 +1,65 @@
+[
+  {
+    "file": "points_data_1.json",
+    "input_records": 76,
+    "unique_coordinates": 76,
+    "aoo_km2": 300,
+    "eoo_raw_km2": 251535.44262656927,
+    "eoo_assessment_km2": 251535.44262656927,
+    "grid_mode": "exact"
+  },
+  {
+    "file": "points_data_2.json",
+    "input_records": 804,
+    "unique_coordinates": 686,
+    "aoo_km2": 2240,
+    "eoo_raw_km2": 5708171.551358041,
+    "eoo_assessment_km2": 5708171.551358041,
+    "grid_mode": "sampled"
+  },
+  {
+    "file": "points_data_3.json",
+    "input_records": 5,
+    "unique_coordinates": 4,
+    "aoo_km2": 12,
+    "eoo_raw_km2": 0.04901638422736368,
+    "eoo_assessment_km2": 12,
+    "grid_mode": "exact"
+  },
+  {
+    "file": "points_data_4.json",
+    "input_records": 1,
+    "unique_coordinates": 1,
+    "aoo_km2": 4,
+    "eoo_raw_km2": null,
+    "eoo_assessment_km2": 4,
+    "grid_mode": "exact"
+  },
+  {
+    "file": "points_data_5.json",
+    "input_records": 371,
+    "unique_coordinates": 335,
+    "aoo_km2": 1132,
+    "eoo_raw_km2": 6595002.637151631,
+    "eoo_assessment_km2": 6595002.637151631,
+    "grid_mode": "sampled"
+  },
+  {
+    "file": "points_data_6.json",
+    "input_records": 318,
+    "unique_coordinates": 318,
+    "aoo_km2": 1272,
+    "eoo_raw_km2": 2439332.8859656784,
+    "eoo_assessment_km2": 2439332.8859656784,
+    "grid_mode": "sampled"
+  },
+  {
+    "file": "single_point_test.json",
+    "input_records": 1,
+    "unique_coordinates": 1,
+    "aoo_km2": 4,
+    "eoo_raw_km2": null,
+    "eoo_assessment_km2": 4,
+    "grid_mode": "exact"
+  }
+]

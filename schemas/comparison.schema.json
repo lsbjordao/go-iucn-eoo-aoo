@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/comparison.schema.json",
+  "title": "go-iucn-eoo-aoo projection comparison schema v1",
+  "type": "object",
+  "required": ["schema_version", "software_version", "input_sha256", "local_laea", "iucn_cea", "delta_iucn_cea_minus_local_laea", "note"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "software_version": {"type": "string"},
+    "input_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "local_laea": {"$ref": "result.schema.json"},
+    "iucn_cea": {"$ref": "result.schema.json"},
+    "delta_iucn_cea_minus_local_laea": {
+      "type": "object",
+      "required": ["eoo_raw_km2", "eoo_raw_percent", "eoo_assessment_km2", "eoo_assessment_percent", "aoo_km2", "aoo_percent", "aoo_occupied_cells"],
+      "properties": {
+        "eoo_raw_km2": {"type": ["number", "null"]},
+        "eoo_raw_percent": {"type": ["number", "null"]},
+        "eoo_assessment_km2": {"type": "number"},
+        "eoo_assessment_percent": {"type": ["number", "null"]},
+        "aoo_km2": {"type": "number"},
+        "aoo_percent": {"type": ["number", "null"]},
+        "aoo_occupied_cells": {"type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "note": {"type": "string"}
+  },
+  "additionalProperties": false
+}

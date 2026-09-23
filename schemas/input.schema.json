@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/input.schema.json",
+  "title": "go-iucn-eoo-aoo canonical input",
+  "description": "Canonical JSON input accepted by v0.1.0: an array of occurrence records or an RFC 7946 Point FeatureCollection. CSV uses the same id,taxon,lon,lat field names.",
+  "oneOf": [
+    {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": {"$ref": "#/$defs/record"}
+    },
+    {"$ref": "#/$defs/featureCollection"}
+  ],
+  "$defs": {
+    "record": {
+      "type": "object",
+      "required": ["lon", "lat"],
+      "properties": {
+        "id": {"type": "string"},
+        "taxon": {"type": "string"},
+        "lon": {"type": "number", "minimum": -180, "maximum": 180},
+        "lat": {"type": "number", "minimum": -90, "maximum": 90}
+      },
+      "additionalProperties": true
+    },
+    "featureCollection": {
+      "type": "object",
+      "required": ["type", "features"],
+      "properties": {
+        "type": {"const": "FeatureCollection"},
+        "features": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": {"$ref": "#/$defs/feature"}
+        }
+      },
+      "not": {"required": ["crs"]},
+      "additionalProperties": true
+    },
+    "feature": {
+      "type": "object",
+      "required": ["type", "geometry"],
+      "properties": {
+        "type": {"const": "Feature"},
+        "id": {"type": ["string", "number"]},
+        "properties": {
+          "type": ["object", "null"],
+          "properties": {
+            "id": {"type": "string"},
+            "taxon": {"type": "string"}
+          },
+          "additionalProperties": true
+        },
+        "geometry": {"$ref": "#/$defs/pointGeometry"}
+      },
+      "additionalProperties": true
+    },
+    "pointGeometry": {
+      "type": "object",
+      "required": ["type", "coordinates"],
+      "properties": {
+        "type": {"const": "Point"},
+        "coordinates": {
+          "type": "array",
+          "minItems": 2,
+          "prefixItems": [
+            {"type": "number", "minimum": -180, "maximum": 180},
+            {"type": "number", "minimum": -90, "maximum": 90}
+          ],
+          "items": {"type": "number"}
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

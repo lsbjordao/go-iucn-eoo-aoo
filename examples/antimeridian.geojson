@@ -1,0 +1,9 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","id":"d1","properties":{"taxon":"Dateline demo"},"geometry":{"type":"Point","coordinates":[179.9,10]}},
+    {"type":"Feature","id":"d2","properties":{"taxon":"Dateline demo"},"geometry":{"type":"Point","coordinates":[-179.9,10]}},
+    {"type":"Feature","id":"d3","properties":{"taxon":"Dateline demo"},"geometry":{"type":"Point","coordinates":[-179.9,10.1]}},
+    {"type":"Feature","id":"d4","properties":{"taxon":"Dateline demo"},"geometry":{"type":"Point","coordinates":[179.9,10.1]}}
+  ]
+}

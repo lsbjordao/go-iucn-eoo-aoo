@@ -1,0 +1,246 @@
+name: Release prebuilt packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  debian13:
+    runs-on: ubuntu-24.04
+    container: debian:13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: true
+      - name: Install native build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates gcc g++ pkg-config libgdal-dev libproj-dev dpkg-dev tar gzip
+      - name: Test and build
+        env:
+          CGO_ENABLED: '1'
+          PROJ_NETWORK: 'OFF'
+        run: |
+          go test ./...
+          go build -buildvcs=false -trimpath -ldflags='-s -w' -o bin/eoo-aoo ./cmd/eoo-aoo
+          ./bin/eoo-aoo version
+      - name: Package Debian 13 artifacts
+        run: |
+          set -eu
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist/archive/eoo-aoo dist/deb/DEBIAN dist/deb/usr/bin dist/deb/usr/share/doc/eoo-aoo
+          cp bin/eoo-aoo dist/archive/eoo-aoo/
+          cp LICENSE README.md THIRD_PARTY.md dist/archive/eoo-aoo/
+          tar -C dist/archive -czf dist/eoo-aoo-linux-amd64-debian13.tar.gz eoo-aoo
+          install -m 0755 bin/eoo-aoo dist/deb/usr/bin/eoo-aoo
+          cp LICENSE dist/deb/usr/share/doc/eoo-aoo/copyright
+          cat > dist/deb/DEBIAN/control <<EOF
+          Package: eoo-aoo
+          Version: ${VERSION}
+          Section: science
+          Priority: optional
+          Architecture: amd64
+          Depends: libgdal36, libproj25
+          Maintainer: Lucas Sá Barreto Jordão <49884803+lsbjordao@users.noreply.github.com>
+          Homepage: https://github.com/lsbjordao/go-iucn-eoo-aoo
+          Description: IUCN-oriented EOO/AOO calculator using GDAL/PROJ
+           Computes auditable extent of occurrence and area of occupancy metrics.
+          EOF
+          dpkg-deb --root-owner-group --build dist/deb dist/eoo-aoo-debian13-amd64.deb
+          dpkg-deb --info dist/eoo-aoo-debian13-amd64.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-debian13
+          path: |
+            dist/eoo-aoo-linux-amd64-debian13.tar.gz
+            dist/eoo-aoo-debian13-amd64.deb
+
+  ubuntu2404:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: true
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgdal-dev libproj-dev pkg-config g++
+      - name: Test, build and package
+        env:
+          CGO_ENABLED: '1'
+          PROJ_NETWORK: 'OFF'
+        run: |
+          set -eu
+          go test ./...
+          go build -buildvcs=false -trimpath -ldflags='-s -w' -o bin/eoo-aoo ./cmd/eoo-aoo
+          ./bin/eoo-aoo version
+          mkdir -p dist/eoo-aoo
+          cp bin/eoo-aoo LICENSE README.md THIRD_PARTY.md dist/eoo-aoo/
+          tar -C dist -czf dist/eoo-aoo-linux-amd64-ubuntu2404.tar.gz eoo-aoo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-ubuntu2404
+          path: dist/eoo-aoo-linux-amd64-ubuntu2404.tar.gz
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: true
+      - name: Install GDAL/PROJ
+        run: brew install gdal pkg-config
+      - name: Test, build and package
+        env:
+          CGO_ENABLED: '1'
+          PROJ_NETWORK: 'OFF'
+        run: |
+          set -eu
+          go test ./...
+          go build -buildvcs=false -trimpath -ldflags='-s -w' -o bin/eoo-aoo ./cmd/eoo-aoo
+          ./bin/eoo-aoo version
+          otool -L bin/eoo-aoo
+          mkdir -p dist/eoo-aoo
+          cp bin/eoo-aoo LICENSE README.md THIRD_PARTY.md dist/eoo-aoo/
+          tar -C dist -czf dist/eoo-aoo-darwin-${{ matrix.arch }}.tar.gz eoo-aoo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-darwin-${{ matrix.arch }}
+          path: dist/eoo-aoo-darwin-${{ matrix.arch }}.tar.gz
+
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: true
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          path-type: inherit
+          update: true
+          install: >-
+            zip
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-dlfcn
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-gdal
+            mingw-w64-ucrt-x86_64-proj
+            mingw-w64-ucrt-x86_64-ntldd
+      - name: Test and build native Windows executable
+        shell: msys2 {0}
+        env:
+          CGO_ENABLED: '1'
+          GOOS: windows
+          GOARCH: amd64
+          CC: gcc
+          PROJ_NETWORK: 'OFF'
+        run: |
+          set -euo pipefail
+          pkg-config --modversion gdal
+          pkg-config --modversion proj
+          # MSYS2 GDAL/PROJ need their resource directories as native Windows paths.
+          export GDAL_DATA="$(cygpath -w /ucrt64/share/gdal)"
+          export PROJ_DATA="$(cygpath -w /ucrt64/share/proj)"
+          go test ./...
+          mkdir -p bin
+          go build -buildvcs=false -trimpath -ldflags='-s -w' -o bin/eoo-aoo.exe ./cmd/eoo-aoo
+          bin/eoo-aoo.exe version
+      - name: Bundle GDAL/PROJ DLLs, data and licenses
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          rm -rf package
+          mkdir -p package/eoo-aoo/share package/eoo-aoo/licenses
+          cp bin/eoo-aoo.exe LICENSE README.md THIRD_PARTY.md package/eoo-aoo/
+          ntldd -R bin/eoo-aoo.exe > package/eoo-aoo/NTLDD-RUNTIME.txt
+          : > package/eoo-aoo/MSYS2-RUNTIME-PACKAGES.txt
+          awk '$2 == "=>" {print $3}' package/eoo-aoo/NTLDD-RUNTIME.txt | while IFS= read -r dep; do
+            unixdep="$dep"
+            case "$dep" in
+              [A-Za-z]:*) unixdep=$(cygpath -u "$dep" 2>/dev/null || true) ;;
+            esac
+            case "$unixdep" in
+              /ucrt64/bin/*)
+                cp -n "$unixdep" package/eoo-aoo/
+                pkg=$(pacman -Qo "$unixdep" 2>/dev/null | awk '{print $5}' || true)
+                [ -n "$pkg" ] && printf '%s\n' "$pkg" >> package/eoo-aoo/MSYS2-RUNTIME-PACKAGES.txt
+                ;;
+            esac
+          done
+          sort -u -o package/eoo-aoo/MSYS2-RUNTIME-PACKAGES.txt package/eoo-aoo/MSYS2-RUNTIME-PACKAGES.txt
+          while IFS= read -r pkg; do
+            [ -n "$pkg" ] || continue
+            mkdir -p "package/eoo-aoo/licenses/$pkg"
+            pacman -Ql "$pkg" | awk '$2 ~ /\/share\/licenses\// {print $2}' | while IFS= read -r license; do
+              [ -f "$license" ] && cp -n "$license" "package/eoo-aoo/licenses/$pkg/" || true
+            done
+          done < package/eoo-aoo/MSYS2-RUNTIME-PACKAGES.txt
+          cp -a /ucrt64/share/gdal package/eoo-aoo/share/gdal
+          cp -a /ucrt64/share/proj package/eoo-aoo/share/proj
+          echo "Bundled DLL count: $(find package/eoo-aoo -maxdepth 1 -name '*.dll' | wc -l)"
+          echo "Runtime package count: $(wc -l < package/eoo-aoo/MSYS2-RUNTIME-PACKAGES.txt)"
+      - name: Test portable Windows bundle outside MSYS2 PATH
+        shell: pwsh
+        run: |
+          $env:Path = "$pwd\package\eoo-aoo;$env:SystemRoot\System32;$env:SystemRoot"
+          & .\package\eoo-aoo\eoo-aoo.exe version
+          & .\package\eoo-aoo\eoo-aoo.exe calc --in examples\brazil.csv --out "$env:TEMP\eoo-result.json"
+      - name: Create Windows ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path package\eoo-aoo -DestinationPath dist\eoo-aoo-windows-amd64.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-amd64
+          path: dist/eoo-aoo-windows-amd64.zip
+
+  release:
+    needs: [debian13, ubuntu2404, macos, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: release
+        run: sha256sum eoo-aoo-* > SHA256SUMS
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: release
+        run: |
+          set -eu
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber ./*
+          else
+            case "$GITHUB_REF_NAME" in
+              *-rc.*|*-beta.*|*-alpha.*)
+                gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease --title "$GITHUB_REF_NAME" --generate-notes ./*
+                ;;
+              *)
+                gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes ./*
+                ;;
+            esac
+          fi

@@ -1,0 +1,9 @@
+/bin/
+/coverage.out
+/examples/output/
+/benchmark/work/
+/benchmark/results/
+/benchmark/.cache/
+*.gpkg-wal
+*.gpkg-shm
+*.zip

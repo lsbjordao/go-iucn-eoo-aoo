@@ -1,0 +1,85 @@
+[
+  {
+    "name": "single-point-default",
+    "points": [
+      {"id": "single-1", "taxon": "Synthetic single point", "lon": -43.2, "lat": -22.9}
+    ],
+    "config": {},
+    "expect": {
+      "aoo_area_km2": 4,
+      "eoo_status": "insufficient_unique_points",
+      "raw_eoo_null": true,
+      "adjusted_to_aoo": true,
+      "unique_coordinates": 1,
+      "duplicate_records": 0
+    }
+  },
+  {
+    "name": "duplicate-provenance",
+    "points": [
+      {"id": "dup-1", "taxon": "Synthetic duplicates", "lon": -47.584853, "lat": -14.096598},
+      {"id": "dup-2", "taxon": "Synthetic duplicates", "lon": -47.584853, "lat": -14.096598}
+    ],
+    "config": {},
+    "expect": {
+      "aoo_area_km2": 4,
+      "eoo_status": "insufficient_unique_points",
+      "raw_eoo_null": true,
+      "adjusted_to_aoo": true,
+      "unique_coordinates": 1,
+      "duplicate_records": 1
+    }
+  },
+  {
+    "name": "tiny-triangle-eoo-floor",
+    "points": [
+      {"taxon": "Synthetic tiny triangle", "lon": 0, "lat": 0},
+      {"taxon": "Synthetic tiny triangle", "lon": 0.0001, "lat": 0},
+      {"taxon": "Synthetic tiny triangle", "lon": 0, "lat": 0.0001}
+    ],
+    "config": {},
+    "expect": {
+      "aoo_area_km2": 4,
+      "eoo_status": "ok",
+      "raw_eoo_null": false,
+      "adjusted_to_aoo": true,
+      "unique_coordinates": 3,
+      "duplicate_records": 0,
+      "max_raw_eoo_km2": 4
+    }
+  },
+  {
+    "name": "collinear",
+    "points": [
+      {"taxon": "Synthetic collinear", "lon": -0.1, "lat": 0},
+      {"taxon": "Synthetic collinear", "lon": 0, "lat": 0},
+      {"taxon": "Synthetic collinear", "lon": 0.1, "lat": 0}
+    ],
+    "config": {"center": [0, 0]},
+    "expect": {
+      "eoo_status": "collinear",
+      "raw_eoo_null": true,
+      "adjusted_to_aoo": true,
+      "unique_coordinates": 3,
+      "duplicate_records": 0
+    }
+  },
+  {
+    "name": "antimeridian-local-laea",
+    "points": [
+      {"taxon": "Synthetic antimeridian", "lon": 179.9, "lat": 10},
+      {"taxon": "Synthetic antimeridian", "lon": -179.9, "lat": 10},
+      {"taxon": "Synthetic antimeridian", "lon": -179.9, "lat": 10.1},
+      {"taxon": "Synthetic antimeridian", "lon": 179.9, "lat": 10.1}
+    ],
+    "config": {},
+    "expect": {
+      "eoo_status": "ok",
+      "raw_eoo_null": false,
+      "adjusted_to_aoo": false,
+      "unique_coordinates": 4,
+      "duplicate_records": 0,
+      "max_raw_eoo_km2": 100000
+    }
+  }
+]
