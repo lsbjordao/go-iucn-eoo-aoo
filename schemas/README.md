@@ -1,6 +1,6 @@
 # JSON schemas
 
-Version 0.1.0 publishes machine-readable JSON Schema contracts for its canonical JSON interfaces:
+Version 0.2.0 publishes machine-readable JSON Schema contracts for its canonical JSON interfaces:
 
 - `input.schema.json` — canonical occurrence arrays and RFC 7946 Point FeatureCollections;
 - `result.schema.json` — `calc` and HTTP calculation results (`schema_version: "1"`);

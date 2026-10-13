@@ -3,7 +3,7 @@ package eooaoo
 import "context"
 
 // Version is the public software version reported in calculation results.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // MaxPoints is the maximum number of occurrence records accepted by one calculation.
 const MaxPoints = 100000

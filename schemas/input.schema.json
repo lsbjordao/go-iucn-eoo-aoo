@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/input.schema.json",
   "title": "go-iucn-eoo-aoo canonical input",
-  "description": "Canonical JSON input accepted by v0.1.0: an array of occurrence records or an RFC 7946 Point FeatureCollection. CSV uses the same id,taxon,lon,lat field names.",
+  "description": "Canonical JSON input accepted since v0.1.0: an array of occurrence records or an RFC 7946 Point FeatureCollection. CSV uses the same id,taxon,lon,lat field names.",
   "oneOf": [
     {
       "type": "array",

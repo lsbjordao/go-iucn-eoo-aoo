@@ -1,4 +1,4 @@
-# Methodology and limitations — 0.1.0
+# Methodology and limitations — 0.2.0
 
 ## Primary references
 

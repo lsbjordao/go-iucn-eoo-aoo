@@ -1,6 +1,6 @@
 # go-iucn-eoo-aoo
 
-**Version 0.1.0 — an auditable Go library, CLI and local API for IUCN-oriented EOO/AOO calculations with GDAL/PROJ.**
+**Version 0.2.0 — an auditable Go library, CLI and local API for IUCN-oriented EOO/AOO calculations with GDAL/PROJ.**
 
 The core transforms coordinates with [`airbusgeo/godal` v0.0.18](https://github.com/airbusgeo/godal/tree/v0.0.18), computes metrics in equal-area projected coordinate systems, and records projection, grid, GDAL/PROJ versions and input provenance in every result. It never measures area in Web Mercator and never approximates kilometres with a fixed degrees conversion.
 
@@ -26,7 +26,7 @@ The executable is `eoo-aoo`.
 Add the versioned module to your Go project:
 
 ```bash
-go get github.com/lsbjordao/go-iucn-eoo-aoo@v0.1.0
+go get github.com/lsbjordao/go-iucn-eoo-aoo@v0.2.0
 ```
 
 Import the public package as `eooaoo`. API documentation and runnable examples
@@ -273,7 +273,7 @@ An abridged result has this shape; numeric values below are illustrative:
 ```json
 {
   "schema_version": "1",
-  "software_version": "0.1.0",
+  "software_version": "0.2.0",
   "gdal_version": "...",
   "proj_version": "...",
   "taxon": "Mimosa demonstrativa",
