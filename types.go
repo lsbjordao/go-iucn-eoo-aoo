@@ -8,7 +8,9 @@ const Version = "0.1.0"
 // MaxPoints is the maximum number of occurrence records accepted by one calculation.
 const MaxPoints = 100000
 
-const gridWorkLimit = 25000000
+// gridWorkLimit bounds the estimated cell-count updates of one grid search.
+// It is a variable only so tests can exercise the fallback path cheaply.
+var gridWorkLimit int64 = 25000000
 
 const (
 	// ProjectionLocalLAEA selects a local Lambert Azimuthal Equal Area projection
@@ -46,6 +48,10 @@ type Config struct {
 	GridMode  string     `json:"grid_mode,omitempty"`
 	GridSteps int        `json:"grid_steps,omitempty"`
 	Origin    [2]float64 `json:"origin_m"`
+	// ExtentWarningDeg triggers PROJECTION_SENSITIVE_EXTENT when the longitude
+	// or latitude span of the unique points exceeds it. Zero selects 20 degrees,
+	// a provisional value pending calibration on more taxa.
+	ExtentWarningDeg float64 `json:"extent_warning_deg,omitempty"`
 }
 
 // Projection records the effective input and analysis CRS definitions and the
@@ -65,29 +71,61 @@ type Projection struct {
 
 // EOOResult contains raw convex-hull EOO and the assessment value after the
 // explicit rule that assessment EOO must not be smaller than AOO.
+//
+// Method names the hull construction and area measurement behind RawAreaKM2.
+// GeodesicAreaKM2 is a diagnostic: the same hull vertices, transformed back to
+// WGS84 and joined by ellipsoidal geodesics. It is a different polygon from
+// the planar hull and is never used for the assessment value.
 type EOOResult struct {
 	RawAreaKM2        *float64 `json:"raw_area_km2"`
 	AssessmentAreaKM2 float64  `json:"assessment_area_km2"`
 	Status            string   `json:"status"`
 	AdjustedToAOO     bool     `json:"adjusted_to_aoo"`
+	Method            string   `json:"method"`
+	GeodesicAreaKM2   *float64 `json:"geodesic_area_km2"`
 	HullWKT           string   `json:"hull_wkt,omitempty"`
 }
 
 // AOOResult contains the occupied-cell result and the grid-search metadata used
 // to obtain it for the fixed orientation of the analysis CRS axes.
+//
+// SearchGuarantee states what the reported count is a minimum of:
+// translation_minimum (every translation at fixed orientation, exact mode),
+// tested_origins_minimum (only the sampled origins) or fixed_origin (no search).
+// TestedMinCells/TestedMaxCells span the evaluated origins only; their range is
+// sensitivity to grid translation, not biological uncertainty. GridMode,
+// MinCells, MaxCells and CompleteTranslationSearch are retained for v1 clients.
 type AOOResult struct {
 	AreaKM2                   float64    `json:"area_km2"`
 	OccupiedCells             int        `json:"occupied_cells"`
 	CellSizeM                 float64    `json:"cell_size_m"`
 	ReferenceScale            bool       `json:"iucn_2km_scale"`
 	GridMode                  string     `json:"grid_mode"`
+	RequestedGridMode         string     `json:"requested_grid_mode"`
+	EffectiveGridMode         string     `json:"effective_grid_mode"`
+	FallbackReason            string     `json:"fallback_reason,omitempty"`
+	ExactWorkEstimate         int64      `json:"exact_work_estimate,omitempty"`
+	EstimatedPointEvaluations int64      `json:"estimated_point_evaluations"`
+	SampledSteps              *int       `json:"grid_steps_effective,omitempty"`
+	SearchGuarantee           string     `json:"search_guarantee"`
 	Origin                    [2]float64 `json:"origin_m"`
 	Candidates                int        `json:"candidate_origins"`
 	MinCells                  int        `json:"min_cells"`
 	MaxCells                  int        `json:"max_cells"`
+	TestedMinCells            int        `json:"tested_min_cells"`
+	TestedMaxCells            int        `json:"tested_max_cells"`
+	BaseOriginCells           int        `json:"base_origin_cells"`
+	BaseOriginAreaKM2         float64    `json:"base_origin_area_km2"`
 	CompleteTranslationSearch bool       `json:"complete_translation_search"`
 	Orientation               string     `json:"orientation"`
 	BoundaryRule              string     `json:"boundary_rule"`
+}
+
+// Extent is the angular extent of the unique WGS84 points. The longitude span
+// is the shortest arc covering every point, so it is correct across ±180.
+type Extent struct {
+	LonSpanDeg float64 `json:"lon_span_deg"`
+	LatSpanDeg float64 `json:"lat_span_deg"`
 }
 
 // Cell describes one occupied AOO cell in analysis-CRS metres.
@@ -111,24 +149,33 @@ type UsedPoint struct {
 }
 
 // Result is the reproducible calculation record returned by Calculate.
+// InputSHA256 hashes the ordered records with their metadata; GeometrySHA256
+// hashes only the sorted unique normalized coordinates; ProtocolSHA256 hashes
+// the effective method and parameters (see AnalysisProtocol).
 // Cells and Points are omitted by Summary and by default CLI/API responses.
 type Result struct {
-	SchemaVersion     string      `json:"schema_version"`
-	SoftwareVersion   string      `json:"software_version"`
-	GDALVersion       string      `json:"gdal_version"`
-	PROJVersion       string      `json:"proj_version"`
-	Taxon             string      `json:"taxon,omitempty"`
-	InputSHA256       string      `json:"input_sha256"`
-	InputRecords      int         `json:"input_records"`
-	UniqueCoordinates int         `json:"unique_coordinates"`
-	DuplicateRecords  int         `json:"duplicate_records"`
-	Config            Config      `json:"config"`
-	Projection        Projection  `json:"projection"`
-	EOO               EOOResult   `json:"eoo"`
-	AOO               AOOResult   `json:"aoo"`
-	Warnings          []string    `json:"warnings"`
-	Cells             []Cell      `json:"cells,omitempty"`
-	Points            []UsedPoint `json:"points,omitempty"`
+	SchemaVersion     string     `json:"schema_version"`
+	SoftwareVersion   string     `json:"software_version"`
+	GDALVersion       string     `json:"gdal_version"`
+	PROJVersion       string     `json:"proj_version"`
+	Taxon             string     `json:"taxon,omitempty"`
+	Build             *BuildInfo `json:"build,omitempty"`
+	InputSHA256       string     `json:"input_sha256"`
+	GeometrySHA256    string     `json:"geometry_sha256"`
+	ProtocolSHA256    string     `json:"protocol_sha256"`
+	InputRecords      int        `json:"input_records"`
+	UniqueCoordinates int        `json:"unique_coordinates"`
+	DuplicateRecords  int        `json:"duplicate_records"`
+	Config            Config     `json:"config"`
+	Projection        Projection `json:"projection"`
+	Extent            Extent     `json:"wgs84_extent"`
+	EOO               EOOResult  `json:"eoo"`
+	AOO               AOOResult  `json:"aoo"`
+	Warnings          []string   `json:"warnings"`
+	// Protocol freezes the effective parameters for temporal reproduction.
+	Protocol *AnalysisProtocol `json:"protocol,omitempty"`
+	Cells    []Cell            `json:"cells,omitempty"`
+	Points   []UsedPoint       `json:"points,omitempty"`
 }
 
 // Summary returns a copy with the potentially large cell and point provenance

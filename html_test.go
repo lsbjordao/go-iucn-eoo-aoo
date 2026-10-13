@@ -31,7 +31,8 @@ func TestWriteMapHTML(t *testing.T) {
 		UniqueCoordinates: 3,
 		Projection:        Projection{Strategy: ProjectionLocalLAEA, Reference: "test projection"},
 		EOO:               EOOResult{AssessmentAreaKM2: 12},
-		AOO:               AOOResult{AreaKM2: 8, OccupiedCells: 2, CellSizeM: 2000, GridMode: "exact"},
+		AOO:               AOOResult{AreaKM2: 8, OccupiedCells: 2, CellSizeM: 2000, GridMode: "sampled", RequestedGridMode: "auto", EffectiveGridMode: "sampled", SearchGuarantee: GuaranteeTestedOriginsMinimum, FallbackReason: FallbackExactWorkLimit},
+		Warnings:          []string{"SAMPLED_GRID: <b>x</b>"},
 	}
 	if err := WriteMapHTML(path, geojsonDir, r); err != nil {
 		t.Fatal(err)
@@ -41,7 +42,7 @@ func TestWriteMapHTML(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(b)
-	for _, want := range []string{"maplibre-gl@6.10.0", "Example species", "occurrences", "aoo-fill", "eoo-fill"} {
+	for _, want := range []string{"maplibre-gl@6.10.0", "Example species", "occurrences", "aoo-fill", "eoo-fill", `"search_guarantee":"tested_origins_minimum"`, `"fallback_reason":"EXACT_WORK_LIMIT"`, "not biological uncertainty"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("HTML missing %q", want)
 		}

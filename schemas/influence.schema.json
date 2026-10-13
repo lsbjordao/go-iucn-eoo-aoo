@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/influence.schema.json",
+  "title": "go-iucn-eoo-aoo EOO influence report v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "software_version",
+    "input_sha256",
+    "geometry_sha256",
+    "protocol_sha256",
+    "projection",
+    "crs_policy",
+    "original_raw_eoo_km2",
+    "original_eoo_status",
+    "status",
+    "hull_vertex_groups",
+    "evaluated_groups",
+    "ranking_complete",
+    "groups",
+    "recompute_projection",
+    "note"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "software_version": {
+      "type": "string"
+    },
+    "input_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "geometry_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "protocol_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "projection": {
+      "$ref": "result.schema.json#/$defs/projection"
+    },
+    "crs_policy": {
+      "type": "string"
+    },
+    "original_raw_eoo_km2": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "original_eoo_status": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial",
+        "unavailable"
+      ]
+    },
+    "hull_vertex_groups": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evaluated_groups": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ranking_complete": {
+      "type": "boolean"
+    },
+    "recompute_projection": {
+      "type": "boolean"
+    },
+    "note": {
+      "type": "string"
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "lon",
+          "lat",
+          "x_m",
+          "y_m",
+          "input_indices",
+          "record_ids",
+          "raw_eoo_without_km2",
+          "eoo_status_without",
+          "reduction_km2",
+          "relative_reduction_percent"
+        ],
+        "properties": {
+          "lon": {
+            "type": "number"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "x_m": {
+            "type": "number"
+          },
+          "y_m": {
+            "type": "number"
+          },
+          "input_indices": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 1
+          },
+          "record_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "raw_eoo_without_km2": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "eoo_status_without": {
+            "type": "string"
+          },
+          "reduction_km2": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "relative_reduction_percent": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "recomputed_projection_raw_eoo_km2": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "recomputed_projection_status": {
+            "type": "string"
+          },
+          "recomputed_projection_error": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -227,6 +227,43 @@ eoo-aoo compare --in occurrences.csv --out projection-comparison.json
 
 The comparison runs the same records and grid configuration under both strategies and reports `iucn-cea - local-laea` differences for raw EOO, assessment EOO, AOO and occupied-cell count, including percentage differences when defined.
 
+### Audit and curate records
+
+`calc` is strict and never drops records. `audit` reports suspect records line by line, including rows `calc` would reject, without excluding anything:
+
+```bash
+eoo-aoo audit --in gbif.csv --x-col decimalLongitude --y-col decimalLatitude --id-col ID \
+  --source-flag-field issue --uncertainty-field coordinateUncertaintyInMeters \
+  --context-fields locality,countryCode --out audit.json
+```
+
+Rules: `INVALID_RECORD` and `INVALID_COORDINATE` (errors); `ZERO_ZERO_COORDINATE` (exactly 0,0 in WGS84; a zero on one axis alone is never flagged); and, only when configured, `COARSE_COORDINATE_PRECISION` (`--coarse-decimals`), `UNCERTAINTY_EXCEEDS_CELL_SIZE` and `SOURCE_QUALITY_FLAG`. Source flags are kept verbatim; only documented GBIF issue codes are interpreted. `calc` also warns about (0,0) records but keeps them.
+
+Exclusions need an explicit, versioned manifest ([schema](schemas/curation-manifest.schema.json)) bound to the exact input hash. Each decision selects a record by index plus its expected ID and/or coordinates and states a justification. `curate` verifies everything before writing a new derived file in the input format and a log with both hashes:
+
+```bash
+eoo-aoo curate --in occurrences.csv --manifest manifest.json \
+  --derived curated.csv --out curation-log.json
+```
+
+### EOO influence of hull vertices
+
+```bash
+eoo-aoo influence --in occurrences.csv --top-k 10 --out influence.json
+eoo-aoo influence --in occurrences.csv --recompute-projection --out influence.json
+```
+
+Each hull-vertex coordinate group (all records at that coordinate) is removed in turn and the hull is rebuilt from all remaining points in the **frozen** analysis CRS of the original run. Groups are ranked by relative reduction of raw EOO. `--recompute-projection` adds, for comparison, the raw EOO with a newly chosen local-LAEA centre. The analysis is a sensitivity diagnostic: it never labels or excludes records.
+
+### Freeze a protocol for temporal series
+
+```bash
+eoo-aoo calc --in 2020.csv --out 2020.json --protocol-out protocol.json
+eoo-aoo calc --in 2025.csv --out 2025.json --protocol protocol.json
+```
+
+The protocol ([schema](schemas/protocol.schema.json)) records the full analysis CRS, centre, effective grid origin, cell size, orientation, boundary rule, hull and area methods and inclusion rules. Reproduction uses a fixed grid, so new records cannot move the centre or the origin. Conflicting flags fail before calculation; a different software, GDAL or PROJ version is reported in `PROTOCOL_ENVIRONMENT_CHANGED`.
+
 ## Output
 
 `calc` always returns a JSON calculation report, either to `stdout` or to the path supplied with `--out`. Additional GIS and interactive outputs can be requested independently.
@@ -241,6 +278,8 @@ An abridged result has this shape; numeric values below are illustrative:
   "proj_version": "...",
   "taxon": "Mimosa demonstrativa",
   "input_sha256": "...",
+  "geometry_sha256": "...",
+  "protocol_sha256": "...",
   "input_records": 5,
   "unique_coordinates": 4,
   "duplicate_records": 1,
@@ -267,6 +306,8 @@ An abridged result has this shape; numeric values below are illustrative:
     "assessment_area_km2": 1234.56,
     "status": "ok",
     "adjusted_to_aoo": false,
+    "method": "planar convex hull in the analysis CRS (...); GDAL planar polygon area in the analysis CRS",
+    "geodesic_area_km2": 1236.02,
     "hull_wkt": "POLYGON ((...))"
   },
   "aoo": {
@@ -275,10 +316,18 @@ An abridged result has this shape; numeric values below are illustrative:
     "cell_size_m": 2000,
     "iucn_2km_scale": true,
     "grid_mode": "exact",
+    "requested_grid_mode": "auto",
+    "effective_grid_mode": "exact",
+    "estimated_point_evaluations": 60,
+    "search_guarantee": "translation_minimum",
     "origin_m": [412.3, 781.4],
     "candidate_origins": 25,
     "min_cells": 4,
     "max_cells": 5,
+    "tested_min_cells": 4,
+    "tested_max_cells": 5,
+    "base_origin_cells": 5,
+    "base_origin_area_km2": 20,
     "complete_translation_search": true,
     "orientation": "analysis CRS axes; no rotation search",
     "boundary_rule": "..."
@@ -300,7 +349,12 @@ The actual `projection` object also contains the full input and analysis WKT def
 | `software_version` | Version of `go-iucn-eoo-aoo` that produced the result |
 | `gdal_version`, `proj_version` | Native geospatial library versions loaded at runtime |
 | `taxon` | Assessment-unit label when present in the input |
-| `input_sha256` | SHA-256 of the normalized input records, useful for reproducibility |
+| `build` | Go version and, when the binary was built from a git checkout, the embedded VCS revision; never invented |
+| `input_sha256` | SHA-256 of the ordered input records with their metadata, useful for reproducibility |
+| `geometry_sha256` | SHA-256 of the sorted unique normalized WGS84 coordinates; unchanged by record order, duplicates or metadata |
+| `protocol_sha256` | SHA-256 of the effective method and parameters (`protocol` without its environment) |
+| `wgs84_extent` | Longitude span (shortest arc, antimeridian-safe) and latitude span of the unique points |
+| `protocol` | Frozen analysis protocol for temporal reproduction; see `--protocol-out` |
 | `input_records` | Number of records received |
 | `unique_coordinates` | Number of distinct WGS84 coordinate pairs after normalization |
 | `duplicate_records` | Records sharing coordinates with another input record |
@@ -318,6 +372,8 @@ The actual `projection` object also contains the full input and analysis WKT def
 | `assessment_area_km2` | EOO value used by the result after the explicit rule that EOO must not be smaller than AOO |
 | `status` | `ok`, `insufficient_unique_points`, `collinear`, or `numerically_degenerate` |
 | `adjusted_to_aoo` | `true` when the assessment EOO was set to AOO because raw EOO was unavailable or smaller |
+| `method` | Hull construction and area measurement behind `raw_area_km2` |
+| `geodesic_area_km2` | Diagnostic only: the same hull vertices joined by WGS84 geodesics; `null` when unavailable; never used for the assessment value |
 | `hull_wkt` | Exact convex hull in the analysis plane when a valid hull exists; omitted when no hull can be constructed |
 
 With fewer than three unique coordinates, collinear points, or a numerically degenerate hull, `raw_area_km2` is `null`. The software does not invent a replacement polygon: `assessment_area_km2` uses AOO and a warning is emitted.
@@ -330,11 +386,17 @@ With fewer than three unique coordinates, collinear points, or a numerically deg
 | `occupied_cells` | Number of occupied grid cells for the selected origin |
 | `cell_size_m` | Grid side length; default is 2,000 m |
 | `iucn_2km_scale` | Whether the 2 × 2 km IUCN reference scale is being used |
-| `grid_mode` | Effective search mode: `auto`, `exact`, `sampled`, or `fixed` |
+| `requested_grid_mode` | Mode asked for after defaults: `auto`, `exact`, `sampled` or `fixed` |
+| `effective_grid_mode` | Mode actually used: `exact`, `sampled` or `fixed` (`grid_mode` repeats it for v1 clients) |
+| `fallback_reason` | Present when `auto` fell back to sampled search, e.g. `EXACT_WORK_LIMIT` (with `exact_work_estimate`) |
+| `estimated_point_evaluations` | Work of the executed search, in cell-count updates |
+| `grid_steps_effective` | Sampled offsets per axis; present only for sampled searches |
+| `search_guarantee` | `translation_minimum` (every translation, fixed orientation), `tested_origins_minimum` (sampled origins only) or `fixed_origin` |
 | `origin_m` | Selected grid origin in analysis-CRS metres |
 | `candidate_origins` | Number of candidate translations evaluated |
-| `min_cells`, `max_cells` | Occupancy range among evaluated origins |
-| `complete_translation_search` | Whether the translation search is exhaustive for the fixed grid orientation |
+| `tested_min_cells`, `tested_max_cells` | Occupancy range among evaluated origins: sensitivity to translation, not biological uncertainty (`min_cells`, `max_cells` repeat them) |
+| `base_origin_cells`, `base_origin_area_km2` | Occupancy at the configured base origin, without any search |
+| `complete_translation_search` | Whether the translation search is exhaustive for the fixed grid orientation (v1 field) |
 | `orientation` | Records that the square grid follows the analysis CRS axes |
 | `boundary_rule` | Rule used when a point lies exactly on a grid-cell boundary |
 
@@ -386,6 +448,7 @@ The comparison report contains:
 - `local_laea`: summary result using local LAEA;
 - `iucn_cea`: summary result using World Cylindrical Equal Area;
 - `delta_iucn_cea_minus_local_laea`: absolute and percentage differences in raw EOO, assessment EOO and AOO, plus occupied-cell difference;
+- `warnings`: structured caveats; `GRID_SEARCH_COVERAGE_DIFFERS` when the two AOO values come from searches with different guarantees, so the AOO delta mixes projection with search coverage, plus `SAMPLED_GRID`/`FIXED_GRID` per side;
 - `note`: interpretation warning about projection dependence.
 
 The sign of every delta is **`iucn-cea - local-laea`**. The command reports sensitivity; it does not automatically choose one strategy as universally superior.
@@ -406,6 +469,9 @@ eoo-aoo batch --in examples/batch.csv --workers 4 --out batch.json
 | `calc` | One assessment unit; rejects mixed taxa |
 | `compare` | Runs `local-laea` and `iucn-cea` on the same input |
 | `batch` | Splits input by taxon and processes groups concurrently |
+| `audit` | Line-by-line data-quality findings; never excludes records |
+| `curate` | Applies an explicit, hash-bound curation manifest and writes a derived input |
+| `influence` | Raw-EOO influence of each hull vertex under a frozen CRS |
 | `serve` | `POST /v1/calculate` and `GET /healthz` |
 | GeoPackage | Exact analysis-plane cells, occurrences and EOO hull |
 | GeoJSON | WGS84 input FeatureCollections and WGS84 display layers via GDAL RFC 7946 |
@@ -438,11 +504,11 @@ With a single unique coordinate (including duplicate records at that coordinate)
 | Mode | Behaviour |
 |---|---|
 | `auto` (default) | Complete translation search when within the work budget; otherwise a 10 × 10 sampled search |
-| `exact` | Enumerates coordinate-residue intervals; minimum for the **fixed CRS-axis orientation** |
+| `exact` | Evaluates every coordinate-residue interval; minimum for the **fixed CRS-axis orientation** |
 | `sampled` | Lowest occupied-cell count among `--grid-steps`² origins; does not prove the global translation minimum |
 | `fixed` | Explicit origin, useful for temporal comparisons |
 
-The work limit is 25 million point/origin evaluations per calculation. Grid translation is optimized; grid rotation is not. Because square-grid orientation follows the projected CRS axes, two equal-area projections can produce different AOO values. The `compare` command exposes that sensitivity rather than hiding it.
+Every mode reports `effective_grid_mode` and `search_guarantee`, and a fallback from `auto` is never hidden: it appears in `fallback_reason`, in the `GRID_SEARCH_FALLBACK` warning, on stderr and in the HTML report. Searches run as an event sweep: for each X interval, occupied-cell counts are updated incrementally as the Y origin crosses each point's residue, instead of rebuilding a full map per origin. The work limit is 25 million cell-count updates per calculation (about 1 s); about 2,800 well-spread points still fit an exact search. Grid translation is optimized; grid rotation is not. Because square-grid orientation follows the projected CRS axes, two equal-area projections can produce different AOO values. The `compare` command exposes that sensitivity rather than hiding it.
 
 See [docs/METHODOLOGY.md](docs/METHODOLOGY.md) and [docs/PROJECTIONS.md](docs/PROJECTIONS.md).
 
@@ -455,7 +521,7 @@ curl --fail-with-body http://127.0.0.1:8080/v1/calculate \
   -H 'Content-Type: application/json' --data-binary @examples/request.json
 ```
 
-The API `points` member accepts the same JSON-array records or an RFC 7946 GeoJSON FeatureCollection. `projection_strategy` can be supplied in the API `config` object. When `EOO_AOO_TOKEN` is defined, calculations require `Authorization: Bearer <token>`. The default server listens only on loopback and is stateless.
+The API `points` member accepts the same JSON-array records or an RFC 7946 GeoJSON FeatureCollection. `projection_strategy` can be supplied in the API `config` object. An optional `protocol` member reproduces a frozen protocol exactly as `calc --protocol` does. When `EOO_AOO_TOKEN` is defined, calculations require `Authorization: Bearer <token>`. The default server listens only on loopback and is stateless.
 
 The HTTP server is an implementation detail used by the CLI and lives under `internal/server`; it is not part of the public Go import API. The public library API is the root `eooaoo` package.
 
@@ -467,13 +533,18 @@ The root directory is the public Go package. The command and implementation-only
 
 ```text
 go-iucn-eoo-aoo/
+├── audit.go         # AuditOccurrences: per-record data-quality findings
 ├── calculate.go
 ├── comparison.go
+├── curation.go      # ApplyCuration: hash-bound exclusion manifests
 ├── export.go
-├── grid.go
+├── geodesic.go      # diagnostic geodesic-edge hull area (PROJ geodesic)
+├── grid.go          # AOO grid search (event sweep) and guarantees
 ├── html.go
-├── hull.go
+├── hull.go          # convex hull with exact orientation predicate
+├── influence.go     # AnalyzeEOOInfluence
 ├── projection.go
+├── protocol.go      # AnalysisProtocol, geometry and protocol hashes
 ├── types.go
 ├── cmd/
 │   └── eoo-aoo/
@@ -482,6 +553,8 @@ go-iucn-eoo-aoo/
 │   └── server/
 ├── examples/
 ├── docs/
+├── schemas/
+├── testdata/
 └── scripts/
 ```
 

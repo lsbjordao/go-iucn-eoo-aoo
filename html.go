@@ -56,7 +56,18 @@ func WriteMapHTML(path, geojsonDir string, r Result) error {
 		"aoo_occupied_cells":   r.AOO.OccupiedCells,
 		"aoo_cell_size_m":      r.AOO.CellSizeM,
 		"grid_mode":            r.AOO.GridMode,
+		"requested_grid_mode":  r.AOO.RequestedGridMode,
+		"effective_grid_mode":  r.AOO.EffectiveGridMode,
+		"search_guarantee":     r.AOO.SearchGuarantee,
+		"fallback_reason":      r.AOO.FallbackReason,
+		"tested_min_cells":     r.AOO.TestedMinCells,
+		"tested_max_cells":     r.AOO.TestedMaxCells,
+		"base_origin_cells":    r.AOO.BaseOriginCells,
+		"eoo_geodesic_km2":     r.EOO.GeodesicAreaKM2,
+		"warnings":             r.Warnings,
 		"input_sha256":         r.InputSHA256,
+		"geometry_sha256":      r.GeometrySHA256,
+		"protocol_sha256":      r.ProtocolSHA256,
 	}
 	metaJSON, err := json.Marshal(metadata)
 	if err != nil {
@@ -88,7 +99,7 @@ const mapHTMLTemplate = `<!doctype html>
 html,body{height:100%;margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f7f7;color:#171717}
 #map{position:absolute;inset:0}
 .panel{position:absolute;z-index:2;top:14px;left:14px;width:min(360px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.12);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.14);padding:14px;box-sizing:border-box}
-h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#555;margin-bottom:12px}.layers{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 12px}.layers label{font-size:13px;display:flex;align-items:center;gap:5px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{border:1px solid #ddd;border-radius:8px;padding:8px}.metric b{display:block;font-size:15px}.metric span{font-size:11px;color:#666}.details{font-size:12px;line-height:1.45;margin-top:10px}.details code{font-size:11px;word-break:break-all}.note{font-size:11px;color:#666;margin-top:10px}.maplibregl-popup-content{font:12px/1.4 system-ui,sans-serif}
+h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#555;margin-bottom:12px}.layers{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 12px}.layers label{font-size:13px;display:flex;align-items:center;gap:5px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{border:1px solid #ddd;border-radius:8px;padding:8px}.metric b{display:block;font-size:15px}.metric span{font-size:11px;color:#666}.details{font-size:12px;line-height:1.45;margin-top:10px}.details code{font-size:11px;word-break:break-all}.note{font-size:11px;color:#666;margin-top:10px}.search{font-size:12px;line-height:1.4;margin-top:8px;padding:6px 8px;border-radius:8px;background:#eef4ff}.search.weak{background:#fff4e5}.warnings{font-size:11px;color:#7a4a00;margin:8px 0 0;padding-left:16px}.maplibregl-popup-content{font:12px/1.4 system-ui,sans-serif}
 @media (max-width:640px){.panel{top:8px;left:8px;width:calc(100vw - 16px);max-height:46vh}}
 </style>
 </head>
@@ -106,6 +117,7 @@ h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#555;margin-bottom:12
     <div class="metric"><b id="eooMetric">—</b><span>Assessment EOO</span></div>
     <div class="metric"><b id="aooMetric">—</b><span>AOO</span></div>
   </div>
+  <div class="search" id="search"></div>
   <div class="details" id="details"></div>
   <div class="note">Spatial assessment data are embedded in this HTML file. MapLibre GL JS and the basemap require an internet connection.</div>
 </section>
@@ -122,13 +134,29 @@ document.getElementById('title').textContent = metadata.taxon || 'EOO / AOO';
 document.getElementById('projection').textContent = metadata.projection_strategy + ' · ' + metadata.projection_reference;
 document.getElementById('eooMetric').textContent = km2(metadata.eoo_assessment_km2);
 document.getElementById('aooMetric').textContent = km2(metadata.aoo_km2);
+const guaranteeText = {
+  translation_minimum: 'Exact search: minimum over every grid translation at fixed orientation.',
+  tested_origins_minimum: 'Sampled search: minimum among tested origins only; a lower count may exist.',
+  fixed_origin: 'Fixed origin: no translation search.'
+};
+const search = document.getElementById('search');
+search.textContent = (guaranteeText[metadata.search_guarantee] || metadata.search_guarantee) +
+  ' Requested ' + metadata.requested_grid_mode + ', effective ' + metadata.effective_grid_mode +
+  (metadata.fallback_reason ? ' (fallback: ' + metadata.fallback_reason + ')' : '') +
+  '. Tested origins: ' + metadata.tested_min_cells + '–' + metadata.tested_max_cells +
+  ' cells (translation sensitivity, not biological uncertainty).';
+if (metadata.search_guarantee !== 'translation_minimum') search.classList.add('weak');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 document.getElementById('details').innerHTML =
   '<b>Raw EOO:</b> ' + km2(metadata.eoo_raw_km2) + '<br>' +
-  '<b>AOO cells:</b> ' + metadata.aoo_occupied_cells + ' × ' + metadata.aoo_cell_size_m + ' m<br>' +
+  '<b>Geodesic-edge EOO (diagnostic):</b> ' + km2(metadata.eoo_geodesic_km2) + '<br>' +
+  '<b>AOO cells:</b> ' + metadata.aoo_occupied_cells + ' × ' + metadata.aoo_cell_size_m + ' m; base origin: ' + metadata.base_origin_cells + '<br>' +
   '<b>Occurrences:</b> ' + metadata.input_records + ' records; ' + metadata.unique_coordinates + ' unique coordinates<br>' +
-  '<b>Grid:</b> ' + metadata.grid_mode + '<br>' +
-  '<b>GDAL / PROJ:</b> ' + metadata.gdal_version + ' / ' + metadata.proj_version + '<br>' +
-  '<b>SHA-256:</b> <code>' + metadata.input_sha256 + '</code>';
+  '<b>GDAL / PROJ:</b> ' + esc(metadata.gdal_version) + ' / ' + esc(metadata.proj_version) + '<br>' +
+  '<b>Input SHA-256:</b> <code>' + esc(metadata.input_sha256) + '</code><br>' +
+  '<b>Geometry SHA-256:</b> <code>' + esc(metadata.geometry_sha256) + '</code><br>' +
+  '<b>Protocol SHA-256:</b> <code>' + esc(metadata.protocol_sha256) + '</code>' +
+  (metadata.warnings && metadata.warnings.length ? '<ul class="warnings">' + metadata.warnings.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '');
 
 const map = new maplibregl.Map({
   container: 'map',

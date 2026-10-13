@@ -13,10 +13,13 @@ import (
 	"strings"
 )
 
-type Options struct{ XColumn, YColumn, TaxonColumn string }
+type Options struct{ XColumn, YColumn, TaxonColumn, IDColumn string }
 type Data struct {
 	Points  []geo.Point
 	GeoJSON bool
+	// Header is the CSV/TSV column order, kept so derived files can be
+	// written back with the same layout.
+	Header []string
 }
 
 func number(v any) (float64, error) {
@@ -65,7 +68,7 @@ func row(m map[string]any, o Options) (geo.Point, error) {
 		return geo.Point{}, fmt.Errorf("lat/Y: %w", e)
 	}
 	taxon := str(value(m, o.TaxonColumn, "taxon", "scientificName", "species"))
-	return geo.Point{X: x, Y: y, ID: str(value(m, "", "id", "occurrenceID")), Taxon: strings.TrimSpace(taxon), Properties: m}, nil
+	return geo.Point{X: x, Y: y, ID: str(value(m, o.IDColumn, "id", "occurrenceID")), Taxon: strings.TrimSpace(taxon), Properties: m}, nil
 }
 
 func Read(data []byte, format string, o Options) (Data, error) {
@@ -135,7 +138,7 @@ func Read(data []byte, format string, o Options) (Data, error) {
 			props, _ := f["properties"].(map[string]any)
 			p := geo.Point{X: x, Y: y, ID: str(f["id"]), Taxon: strings.TrimSpace(str(value(props, o.TaxonColumn, "taxon", "scientificName", "species"))), Properties: props}
 			if p.ID == "" {
-				p.ID = str(value(props, "", "id", "occurrenceID"))
+				p.ID = str(value(props, o.IDColumn, "id", "occurrenceID"))
 			}
 			out.Points = append(out.Points, p)
 		}
@@ -190,5 +193,6 @@ func readCSV(data []byte, format string, o Options) (Data, error) {
 	if len(out.Points) == 0 {
 		return out, fmt.Errorf("CSV has no records")
 	}
+	out.Header = h
 	return out, nil
 }

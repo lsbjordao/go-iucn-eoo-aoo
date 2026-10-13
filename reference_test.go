@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +17,8 @@ type referenceExpectation struct {
 	UniqueCoordinates *int     `json:"unique_coordinates,omitempty"`
 	DuplicateRecords  *int     `json:"duplicate_records,omitempty"`
 	MaxRawEOOKM2      *float64 `json:"max_raw_eoo_km2,omitempty"`
+	MinRawEOOKM2      *float64 `json:"min_raw_eoo_km2,omitempty"`
+	WarningsInclude   []string `json:"warnings_include,omitempty"`
 }
 
 type referenceCase struct {
@@ -23,6 +26,8 @@ type referenceCase struct {
 	Points []Point              `json:"points"`
 	Config Config               `json:"config"`
 	Expect referenceExpectation `json:"expect"`
+	// Rationale explains how the expectation was derived independently.
+	Rationale string `json:"rationale,omitempty"`
 }
 
 func TestReferenceCorpus(t *testing.T) {
@@ -65,6 +70,20 @@ func TestReferenceCorpus(t *testing.T) {
 			if tc.Expect.MaxRawEOOKM2 != nil {
 				if r.EOO.RawAreaKM2 == nil || *r.EOO.RawAreaKM2 > *tc.Expect.MaxRawEOOKM2 {
 					t.Fatalf("raw EOO %v exceeds expected maximum %.12g", r.EOO.RawAreaKM2, *tc.Expect.MaxRawEOOKM2)
+				}
+			}
+			if tc.Expect.MinRawEOOKM2 != nil {
+				if r.EOO.RawAreaKM2 == nil || *r.EOO.RawAreaKM2 < *tc.Expect.MinRawEOOKM2 {
+					t.Fatalf("raw EOO %v below expected minimum %.12g", r.EOO.RawAreaKM2, *tc.Expect.MinRawEOOKM2)
+				}
+			}
+			for _, code := range tc.Expect.WarningsInclude {
+				found := false
+				for _, w := range r.Warnings {
+					found = found || strings.HasPrefix(w, code+":")
+				}
+				if !found {
+					t.Fatalf("missing warning %s in %v", code, r.Warnings)
 				}
 			}
 		})

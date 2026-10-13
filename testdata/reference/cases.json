@@ -81,5 +81,105 @@
       "duplicate_records": 0,
       "max_raw_eoo_km2": 100000
     }
+  },
+  {
+    "name": "two-points-default",
+    "points": [
+      {"id": "two-points-1", "taxon": "Synthetic two-points", "lon": -43.2, "lat": -22.9},
+      {"id": "two-points-2", "taxon": "Synthetic two-points", "lon": -44.3, "lat": -21.5}
+    ],
+    "config": {},
+    "expect": {
+      "aoo_area_km2": 8,
+      "eoo_status": "insufficient_unique_points",
+      "raw_eoo_null": true,
+      "adjusted_to_aoo": true,
+      "unique_coordinates": 2,
+      "duplicate_records": 0
+    },
+    "rationale": "Two points about 190 km apart occupy two cells under any translation; fewer than three points have no hull."
+  },
+  {
+    "name": "equator-crossing-square",
+    "points": [
+      {"id": "equator-1", "taxon": "Synthetic equator", "lon": -50, "lat": -0.5},
+      {"id": "equator-2", "taxon": "Synthetic equator", "lon": -49, "lat": -0.5},
+      {"id": "equator-3", "taxon": "Synthetic equator", "lon": -49, "lat": 0.5},
+      {"id": "equator-4", "taxon": "Synthetic equator", "lon": -50, "lat": 0.5}
+    ],
+    "config": {},
+    "expect": {
+      "aoo_area_km2": 16,
+      "eoo_status": "ok",
+      "raw_eoo_null": false,
+      "adjusted_to_aoo": false,
+      "unique_coordinates": 4,
+      "duplicate_records": 0,
+      "min_raw_eoo_km2": 12200,
+      "max_raw_eoo_km2": 12400
+    },
+    "rationale": "A 1 x 1 degree square on the equator spans about 111.32 km of longitude by 110.57 km of latitude on WGS84, about 12,309 km2."
+  },
+  {
+    "name": "near-pole-ring",
+    "points": [
+      {"id": "pole-1", "taxon": "Synthetic pole", "lon": 0, "lat": 89.5},
+      {"id": "pole-2", "taxon": "Synthetic pole", "lon": 90, "lat": 89.5},
+      {"id": "pole-3", "taxon": "Synthetic pole", "lon": 180, "lat": 89.5},
+      {"id": "pole-4", "taxon": "Synthetic pole", "lon": -90, "lat": 89.5}
+    ],
+    "config": {},
+    "expect": {
+      "aoo_area_km2": 16,
+      "eoo_status": "ok",
+      "raw_eoo_null": false,
+      "adjusted_to_aoo": false,
+      "unique_coordinates": 4,
+      "duplicate_records": 0,
+      "min_raw_eoo_km2": 6100,
+      "max_raw_eoo_km2": 6400
+    },
+    "rationale": "Four points 0.5 degrees (about 55.8 km of meridian arc) from the pole form a square of area 2R2, about 6,240 km2."
+  },
+  {
+    "name": "exact-domain-limits",
+    "points": [
+      {"id": "limits-1", "taxon": "Synthetic limits", "lon": 180, "lat": 0},
+      {"id": "limits-2", "taxon": "Synthetic limits", "lon": -180, "lat": 0},
+      {"id": "limits-3", "taxon": "Synthetic limits", "lon": 10, "lat": 90},
+      {"id": "limits-4", "taxon": "Synthetic limits", "lon": -20, "lat": 90}
+    ],
+    "config": {},
+    "expect": {
+      "aoo_area_km2": 8,
+      "eoo_status": "insufficient_unique_points",
+      "raw_eoo_null": true,
+      "adjusted_to_aoo": true,
+      "unique_coordinates": 2,
+      "duplicate_records": 2
+    },
+    "rationale": "Longitude 180 equals -180 and every longitude at a pole is the same point, leaving two unique coordinates 90 degrees apart."
+  },
+  {
+    "name": "large-extent-cea",
+    "points": [
+      {"id": "large-1", "taxon": "Synthetic large", "lon": -100, "lat": -10},
+      {"id": "large-2", "taxon": "Synthetic large", "lon": -30, "lat": -10},
+      {"id": "large-3", "taxon": "Synthetic large", "lon": -30, "lat": 10},
+      {"id": "large-4", "taxon": "Synthetic large", "lon": -100, "lat": 10}
+    ],
+    "config": {"projection_strategy": "iucn-cea"},
+    "expect": {
+      "aoo_area_km2": 16,
+      "eoo_status": "ok",
+      "raw_eoo_null": false,
+      "adjusted_to_aoo": false,
+      "unique_coordinates": 4,
+      "duplicate_records": 0,
+      "warnings_include": [
+        "PROJECTION_SENSITIVE_EXTENT"
+      ]
+    },
+    "rationale": "A 70-degree-wide set must carry the projection-sensitivity warning; its corners are thousands of km apart, one cell each."
   }
 ]

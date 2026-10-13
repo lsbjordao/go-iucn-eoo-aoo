@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/curation-manifest.schema.json",
+  "title": "go-iucn-eoo-aoo curation manifest v1",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "input_sha256",
+    "decisions"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "1"
+    },
+    "input_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "curator": {
+      "type": "string"
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "input_index",
+          "action",
+          "justification"
+        ],
+        "properties": {
+          "input_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "record_id": {
+            "type": "string"
+          },
+          "lon": {
+            "type": "number"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "action": {
+            "const": "exclude"
+          },
+          "justification": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "record_id"
+            ]
+          },
+          {
+            "required": [
+              "lon",
+              "lat"
+            ]
+          }
+        ],
+        "dependentRequired": {
+          "lon": [
+            "lat"
+          ],
+          "lat": [
+            "lon"
+          ]
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false
+}

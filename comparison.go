@@ -18,17 +18,50 @@ type ProjectionDelta struct {
 	AOOOccupiedCells     int      `json:"aoo_occupied_cells"`
 }
 
+// ComparisonWarning is a structured caveat about what a delta can mean.
+type ComparisonWarning struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 // ProjectionComparison contains summary results for both supported projection
 // strategies plus their signed differences. It exposes projection sensitivity;
-// it does not select a universally preferred strategy.
+// it does not select a universally preferred strategy. Warnings flag when the
+// two AOO values were not obtained with the same search coverage, in which
+// case the AOO delta mixes projection with grid-search effects.
 type ProjectionComparison struct {
-	SchemaVersion   string          `json:"schema_version"`
-	SoftwareVersion string          `json:"software_version"`
-	InputSHA256     string          `json:"input_sha256"`
-	LocalLAEA       Result          `json:"local_laea"`
-	IUCNCEA         Result          `json:"iucn_cea"`
-	Delta           ProjectionDelta `json:"delta_iucn_cea_minus_local_laea"`
-	Note            string          `json:"note"`
+	SchemaVersion   string              `json:"schema_version"`
+	SoftwareVersion string              `json:"software_version"`
+	InputSHA256     string              `json:"input_sha256"`
+	LocalLAEA       Result              `json:"local_laea"`
+	IUCNCEA         Result              `json:"iucn_cea"`
+	Delta           ProjectionDelta     `json:"delta_iucn_cea_minus_local_laea"`
+	Warnings        []ComparisonWarning `json:"warnings"`
+	Note            string              `json:"note"`
+}
+
+func comparisonWarnings(local, iucn Result) []ComparisonWarning {
+	w := []ComparisonWarning{}
+	a, b := local.AOO, iucn.AOO
+	if a.EffectiveGridMode != b.EffectiveGridMode || a.SearchGuarantee != b.SearchGuarantee {
+		w = append(w, ComparisonWarning{"GRID_SEARCH_COVERAGE_DIFFERS", fmt.Sprintf("local-laea AOO used %s search (%s) and iucn-cea used %s search (%s); the AOO delta mixes projection with search coverage", a.EffectiveGridMode, a.SearchGuarantee, b.EffectiveGridMode, b.SearchGuarantee)})
+	}
+	for _, side := range []struct {
+		name string
+		a    AOOResult
+	}{{ProjectionLocalLAEA, a}, {ProjectionIUCNCEA, b}} {
+		switch side.a.EffectiveGridMode {
+		case "sampled":
+			msg := side.name + " AOO is the minimum among tested origins; not a proven translation minimum"
+			if side.a.FallbackReason != "" {
+				msg += " (auto fallback: " + side.a.FallbackReason + ")"
+			}
+			w = append(w, ComparisonWarning{"SAMPLED_GRID", msg})
+		case "fixed":
+			w = append(w, ComparisonWarning{"FIXED_GRID", side.name + " AOO uses one fixed origin; origin sensitivity was not searched"})
+		}
+	}
+	return w
 }
 
 func relativePercent(delta, baseline float64) *float64 {
@@ -87,6 +120,7 @@ func CompareProjections(ctx context.Context, points []Point, config Config) (Pro
 		LocalLAEA:       local.Summary(),
 		IUCNCEA:         iucn.Summary(),
 		Delta:           d,
+		Warnings:        comparisonWarnings(local, iucn),
 		Note:            "Projection choice can change planar hull shape and 2 km grid orientation. iucn-cea uses the World Cylindrical Equal Area projection documented by the IUCN EOO Calculator; it is a compatibility-oriented comparison, not an IUCN certification.",
 	}
 	return out, nil

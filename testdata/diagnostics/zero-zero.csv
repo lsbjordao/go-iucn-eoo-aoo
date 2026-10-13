@@ -1,0 +1,12 @@
+ID,scientificName,decimalLongitude,decimalLatitude,coordinateUncertaintyInMeters,locality,issue
+r1,Synthetic species,-48.5,-23.5,30,Site A,
+r2,Synthetic species,-54.9,-34.9,NA,Site B,
+r3,Synthetic species,-41.4,-12.6,5000,Site C,cdround
+r4,Synthetic species,-60.36,-24.91,,Site D,gass84
+r5,Synthetic species,-50.1,-27.2,100,Site E,
+r6,Synthetic species,0,0,NA,"Corrientes, Argentina","cucdmis,gass84,zerocd"
+r7,Synthetic species,0,-10.25,10,On Greenwich,
+r8,Synthetic species,-45.75,0,10,On the equator,
+r9,Synthetic species,,-20.1,10,Missing longitude,
+r10,Synthetic species,-47,-91,10,Latitude out of range,
+r1,Synthetic species,-48.5,-23.5,30,Duplicate ID and coordinate,

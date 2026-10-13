@@ -2,9 +2,6 @@ package eooaoo
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"github.com/airbusgeo/godal"
 	"math"
@@ -30,6 +27,12 @@ func normalizeConfig(c Config) (Config, error) {
 	}
 	if c.GridSteps == 0 {
 		c.GridSteps = 10
+	}
+	if c.ExtentWarningDeg == 0 {
+		c.ExtentWarningDeg = 20
+	}
+	if !finite(c.ExtentWarningDeg) || c.ExtentWarningDeg < 0 || c.ExtentWarningDeg > 360 {
+		return c, fmt.Errorf("extent_warning_deg must be between 0 and 360")
 	}
 	if !finite(c.CellSizeM) || c.CellSizeM < 1 || c.CellSizeM > 100000 {
 		return c, fmt.Errorf("cell_size_m must be between 1 and 100000 metres")
@@ -66,7 +69,7 @@ func normalizeConfig(c Config) (Config, error) {
 // is checked between transforms and inside the grid search. All input is strict:
 // no silent dropping, imputing missing coordinates to zero, or auto-swapping axes.
 func Calculate(ctx context.Context, points []Point, config Config) (Result, error) {
-	r := Result{SchemaVersion: "1", SoftwareVersion: Version, GDALVersion: GDALVersion(), PROJVersion: PROJVersion(), Warnings: []string{}}
+	r := Result{SchemaVersion: "1", SoftwareVersion: Version, GDALVersion: GDALVersion(), PROJVersion: PROJVersion(), Build: Build(), Warnings: []string{}}
 	c, err := normalizeConfig(config)
 	if err != nil {
 		return r, err
@@ -102,12 +105,9 @@ func Calculate(ctx context.Context, points []Point, config Config) (Result, erro
 			}
 		}
 	}
-	b, err := json.Marshal(points)
-	if err != nil {
-		return r, fmt.Errorf("input metadata must be JSON-compatible: %w", err)
+	if r.InputSHA256, err = InputHash(points); err != nil {
+		return r, err
 	}
-	sum := sha256.Sum256(b)
-	r.InputSHA256 = hex.EncodeToString(sum[:])
 	src, err := godal.NewSpatialRef(c.InputCRS)
 	if err != nil {
 		return r, fmt.Errorf("input CRS: %w", err)
@@ -161,6 +161,14 @@ func Calculate(ctx context.Context, points []Point, config Config) (Result, erro
 	})
 	r.UniqueCoordinates = len(r.Points)
 	r.DuplicateRecords = len(points) - len(r.Points)
+	r.GeometrySHA256 = geometryHash(r.Points)
+	r.Extent.LonSpanDeg, r.Extent.LatSpanDeg = lonLatExtent(r.Points)
+	if zero := zeroZeroRecords(r.Points); zero > 0 {
+		r.Warnings = append(r.Warnings, fmt.Sprintf("ZERO_ZERO_COORDINATE: %d record(s) at exactly lon 0, lat 0, a common missing-coordinate placeholder; they were retained; run audit and exclude only through an explicit curation manifest", zero))
+	}
+	if r.Extent.LonSpanDeg > c.ExtentWarningDeg || r.Extent.LatSpanDeg > c.ExtentWarningDeg {
+		r.Warnings = append(r.Warnings, fmt.Sprintf("PROJECTION_SENSITIVE_EXTENT: points span %.1f degrees of longitude and %.1f of latitude (threshold %g); planar hull shape and grid orientation depend on the projection; inspect compare before assessment use", r.Extent.LonSpanDeg, r.Extent.LatSpanDeg, c.ExtentWarningDeg))
+	}
 
 	center := [2]float64{}
 	centerMethod := "fixed projection origin at 0,0"
@@ -229,15 +237,30 @@ func Calculate(ctx context.Context, points []Point, config Config) (Result, erro
 	if err != nil {
 		return r, err
 	}
-	r.EOO, err = calculateEOO(projected, dst, r.AOO.AreaKM2)
+	var hull []xy
+	r.EOO, hull, err = calculateEOO(projected, dst, r.AOO.AreaKM2)
 	if err != nil {
 		return r, err
 	}
+	if hull != nil {
+		if r.EOO.GeodesicAreaKM2, err = geodesicHullArea(hull, dst, wgs); err != nil {
+			return r, err
+		}
+		if r.EOO.GeodesicAreaKM2 == nil {
+			r.Warnings = append(r.Warnings, "GEODESIC_EOO_UNAVAILABLE: the planar hull vertices do not form a positively oriented polygon on the ellipsoid (e.g. a world-spanning hull); the diagnostic geodesic area is null")
+		}
+	}
+	p := r.deriveProtocol()
+	r.ProtocolSHA256 = p.SHA256()
+	r.Protocol = &p
 	if r.EOO.Status != "ok" {
 		r.Warnings = append(r.Warnings, "EOO_UNAVAILABLE: no non-degenerate polygon; raw EOO is null, assessment value uses AOO by explicit convention")
 	}
 	if r.EOO.AdjustedToAOO {
 		r.Warnings = append(r.Warnings, "EOO_FLOORED_TO_AOO: assessment EOO equals AOO; no replacement hull is invented")
+	}
+	if r.AOO.FallbackReason != "" {
+		r.Warnings = append(r.Warnings, fmt.Sprintf("GRID_SEARCH_FALLBACK: %s; exact search needed an estimated %d cell updates (limit %d), so auto used sampled search", r.AOO.FallbackReason, r.AOO.ExactWorkEstimate, gridWorkLimit))
 	}
 	if r.AOO.GridMode == "sampled" {
 		r.Warnings = append(r.Warnings, "SAMPLED_GRID: minimum among tested origins; not a proven translation minimum")
@@ -256,4 +279,32 @@ func Calculate(ctx context.Context, points []Point, config Config) (Result, erro
 	}
 	r.Warnings = append(r.Warnings, "POINT_BASED_ESTIMATE: records alone may underestimate occupancy; occurrence suitability and other Red List subcriteria require assessment")
 	return r, ctx.Err()
+}
+
+func zeroZeroRecords(p []UsedPoint) int {
+	for _, v := range p {
+		if v.Longitude == 0 && v.Latitude == 0 {
+			return len(v.Records)
+		}
+	}
+	return 0
+}
+
+// geodesicHullArea transforms the planar hull vertices to WGS84 and measures
+// the polygon with geodesic edges. It returns nil when that polygon is not
+// positively oriented, which happens when the planar hull wraps the globe.
+func geodesicHullArea(h []xy, dst, wgs *godal.SpatialRef) (*float64, error) {
+	lon, lat := make([]float64, len(h)), make([]float64, len(h))
+	for i, v := range h {
+		lon[i], lat[i] = v.x, v.y
+	}
+	if err := transform(dst, wgs, lon, lat); err != nil {
+		return nil, fmt.Errorf("hull vertices to WGS84: %w", err)
+	}
+	a, ok := wgs84GeodesicArea(lon, lat)
+	if !ok {
+		return nil, nil
+	}
+	a /= 1e6
+	return &a, nil
 }

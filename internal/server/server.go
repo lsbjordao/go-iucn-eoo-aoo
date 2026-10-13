@@ -17,6 +17,9 @@ import (
 type request struct {
 	Points json.RawMessage `json:"points"`
 	Config geo.Config      `json:"config"`
+	// Protocol, when present, reproduces a frozen analysis protocol; config
+	// fields that are set must agree with it.
+	Protocol *geo.AnalysisProtocol `json:"protocol,omitempty"`
 }
 
 func send(w http.ResponseWriter, status int, v any) {
@@ -85,7 +88,12 @@ func NewHandler(workers int, token string) http.Handler {
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
-		result, e := geo.Calculate(ctx, data.Points, req.Config)
+		var result geo.Result
+		if req.Protocol != nil {
+			result, e = geo.CalculateWithProtocol(ctx, data.Points, *req.Protocol, req.Config)
+		} else {
+			result, e = geo.Calculate(ctx, data.Points, req.Config)
+		}
 		if e != nil {
 			send(w, 422, map[string]string{"error": e.Error()})
 			return

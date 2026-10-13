@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -49,5 +50,35 @@ func TestConcurrentCalculations(t *testing.T) {
 				t.Fatal(w.Body.String())
 			}
 		})
+	}
+}
+
+func TestAPIProtocolReproduction(t *testing.T) {
+	h := NewHandler(2, "")
+	post := func(body string) *httptest.ResponseRecorder {
+		q := httptest.NewRequest("POST", "/v1/calculate", strings.NewReader(body))
+		q.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, q)
+		return w
+	}
+	points := `[{"lon":-43.2,"lat":-22.9},{"lon":-44.3,"lat":-21.5},{"lon":-42.9,"lat":-20.8}]`
+	w := post(`{"points":` + points + `}`)
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	var first struct {
+		ProtocolSHA256 string          `json:"protocol_sha256"`
+		Protocol       json.RawMessage `json:"protocol"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &first); err != nil || len(first.Protocol) == 0 {
+		t.Fatalf("%v %s", err, w.Body.String())
+	}
+	w = post(`{"points":` + points + `,"protocol":` + string(first.Protocol) + `}`)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), first.ProtocolSHA256) || !strings.Contains(w.Body.String(), "FROZEN_PROTOCOL") {
+		t.Fatal(w.Body.String())
+	}
+	if w = post(`{"points":` + points + `,"config":{"cell_size_m":1000},"protocol":` + string(first.Protocol) + `}`); w.Code != 422 {
+		t.Fatalf("conflicting config accepted: %d %s", w.Code, w.Body.String())
 	}
 }

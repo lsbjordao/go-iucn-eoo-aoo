@@ -20,7 +20,7 @@ CONR_RLIB ?= $(BENCH_CACHE)/Rlib
 
 build:
 	mkdir -p bin
-	$(GO) build -buildvcs=false -trimpath -o bin/eoo-aoo ./cmd/eoo-aoo
+	$(GO) build -buildvcs=auto -trimpath -o bin/eoo-aoo ./cmd/eoo-aoo
 
 test:
 	$(GO) test -race ./...

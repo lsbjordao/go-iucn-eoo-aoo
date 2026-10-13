@@ -34,6 +34,8 @@ Each `Calculate` call creates and closes its own native objects; independent cal
 
 The canonical tabular record fields are `id`, `taxon`, `lon` and `lat`, matching the CSV and JSON CLI inputs documented in the README. `points` also accepts a GeoJSON FeatureCollection. The default response is a summary. `?details=1` includes occupied cells and all source-record provenance and can substantially increase response size. The API does not write files on the server; GIS and HTML exports are produced through the CLI or library.
 
+An optional top-level `protocol` member (the `protocol` object of an earlier result, see `schemas/protocol.schema.json`) reproduces that frozen protocol with a fixed grid. `config` fields that are set must agree with it; a conflict is rejected with 422 before calculation.
+
 | Status | Meaning |
 |---|---|
 | 200 | Calculation or health check completed |
@@ -48,7 +50,7 @@ The canonical tabular record fields are `id`, `taxon`, `lon` and `lat`, matching
 
 ## Jobs, lakehouses and updates
 
-A useful unit of work is `(taxon_id, period, inclusion_rules, data_version, spatial_config)`. A worker can fetch already-curated occurrences, call the Go library, and persist JSON/GPKG output together with the snapshot identifiers used for the run.
+A useful unit of work is `(taxon_id, period, inclusion_rules, data_version, spatial_config)`. For a temporal series, persist the first run's `protocol` and send it with later requests; store `input_sha256`, `geometry_sha256` and `protocol_sha256` with each result. A worker can fetch already-curated occurrences, call the Go library, and persist JSON/GPKG output together with the snapshot identifiers used for the run.
 
 For Airflow or a Go job broker, call the CLI with a JSON/file input or embed the library directly in the worker. Batch mode records per-taxon errors so failed groups can be retried independently. The CLI exits non-zero when one or more groups fail, while preserving the batch report for successfully processed groups.
 

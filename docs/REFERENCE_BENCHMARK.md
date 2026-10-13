@@ -1,5 +1,7 @@
 # Reference implementation benchmark — 2026-09-23
 
+> **Newer evidence (2026-10-13).** The traceable three-family benchmark of the sibling `go-iucn-eoo-aoo-tests` harness, with independent GEOS and exact-arithmetic grid oracles, is summarized in [VALIDATION.md](VALIDATION.md#2026-10-13-data-audit-search-guarantees-influence-protocols-and-traceable-benchmark). The ConR and Vicente revisions below were real pinned commits. That harness now records them from the installed package and the build cache instead of passing a `pinned` label. This document is kept as the record of the 2026-09-23 run.
+
 This document records an initial reproducible comparison of `go-iucn-eoo-aoo` against independent EOO/AOO implementations. It is evidence about implementation behaviour, not an accuracy ranking and not an IUCN certification.
 
 The benchmark harness is described in [`benchmark/README.md`](../benchmark/README.md) and can be reproduced with:

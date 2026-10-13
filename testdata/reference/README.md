@@ -4,6 +4,8 @@ This directory contains versioned inputs and expectations used to guard scientif
 
 `cases.json` contains synthetic cases whose expected behaviour can be justified independently of the current implementation, such as the 4 km² one-cell AOO at the default 2 km grid scale, duplicate-coordinate provenance, degenerate EOO cases, the EOO-to-AOO floor, and an antimeridian sanity bound.
 
+Each newer case carries a `rationale` explaining how its expectation was derived. Bounds such as `min_raw_eoo_km2`/`max_raw_eoo_km2` come from simple ellipsoidal geometry, not from this implementation. `warnings_include` lists warning codes that must be present.
+
 The automated test in `reference_test.go` executes every case. These cases are regression guards, not a substitute for external scientific validation.
 
 ## External comparison results

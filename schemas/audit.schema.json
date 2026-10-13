@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/audit.schema.json",
+  "title": "go-iucn-eoo-aoo audit report v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "rules_version",
+    "software_version",
+    "config",
+    "input_crs",
+    "input_sha256",
+    "input_records",
+    "invalid_records",
+    "records_with_issues",
+    "valid_unique_coordinates",
+    "duplicate_record_ids",
+    "counts_by_code",
+    "counts_by_severity",
+    "calculation_compatible",
+    "issues",
+    "note"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "rules_version": {
+      "type": "string"
+    },
+    "software_version": {
+      "type": "string"
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "input_crs": {
+          "type": "string"
+        },
+        "cell_size_m": {
+          "type": "number"
+        },
+        "coarse_decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "uncertainty_field": {
+          "type": "string"
+        },
+        "source_flag_field": {
+          "type": "string"
+        },
+        "context_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "input_crs": {
+      "type": "string"
+    },
+    "input_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "input_records": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "invalid_records": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "records_with_issues": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "valid_unique_coordinates": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "duplicate_record_ids": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "uncertainty_unknown": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "counts_by_code": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "counts_by_severity": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "calculation_compatible": {
+      "type": "boolean"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "severity",
+          "input_index",
+          "evidence",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "INVALID_RECORD",
+              "INVALID_COORDINATE",
+              "ZERO_ZERO_COORDINATE",
+              "COARSE_COORDINATE_PRECISION",
+              "UNCERTAINTY_EXCEEDS_CELL_SIZE",
+              "SOURCE_QUALITY_FLAG"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "error",
+              "warning",
+              "info"
+            ]
+          },
+          "input_index": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "source_row": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "record_id": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

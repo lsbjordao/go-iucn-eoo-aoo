@@ -5,7 +5,14 @@ Version 0.1.0 publishes machine-readable JSON Schema contracts for its canonical
 - `input.schema.json` — canonical occurrence arrays and RFC 7946 Point FeatureCollections;
 - `result.schema.json` — `calc` and HTTP calculation results (`schema_version: "1"`);
 - `comparison.schema.json` — `compare` results;
-- `batch.schema.json` — `batch` results.
+- `batch.schema.json` — `batch` results;
+- `protocol.schema.json` — frozen analysis protocols (`calc --protocol-out`, `result.protocol`);
+- `audit.schema.json` — `audit` reports;
+- `curation-manifest.schema.json` — curation manifests read by `curate`;
+- `curation-log.schema.json` — `curate` logs;
+- `influence.schema.json` — `influence` reports.
+
+Fields added after the initial release (for example `geometry_sha256`, `protocol`, `eoo.geodesic_area_km2` and the `aoo` search-guarantee fields) are optional in the schema, so results from earlier 0.1.x builds still validate. Their meaning is documented in `docs/METHODOLOGY.md`. `schema_test.go` validates every output type against these files.
 
 The canonical tabular CSV schema uses the same record fields as JSON: `id,taxon,lon,lat`.
 

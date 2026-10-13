@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lsbjordao/go-iucn-eoo-aoo/schemas/protocol.schema.json",
+  "title": "go-iucn-eoo-aoo analysis protocol v1",
+  "type": "object",
+  "required": [
+    "protocol_version",
+    "input_crs",
+    "projection_strategy",
+    "analysis_proj",
+    "cell_size_m",
+    "origin_m",
+    "grid_mode",
+    "orientation",
+    "boundary_rule",
+    "hull_method",
+    "area_method",
+    "inclusion_rules_version",
+    "environment"
+  ],
+  "properties": {
+    "protocol_version": {
+      "const": "1"
+    },
+    "input_crs": {
+      "type": "string"
+    },
+    "projection_strategy": {
+      "enum": [
+        "local-laea",
+        "iucn-cea"
+      ]
+    },
+    "analysis_proj": {
+      "type": "string"
+    },
+    "center_lon_lat": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "cell_size_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "origin_m": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "grid_mode": {
+      "const": "fixed"
+    },
+    "orientation": {
+      "type": "string"
+    },
+    "boundary_rule": {
+      "type": "string"
+    },
+    "hull_method": {
+      "type": "string"
+    },
+    "area_method": {
+      "type": "string"
+    },
+    "inclusion_rules_version": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "software_version",
+        "gdal_version",
+        "proj_version"
+      ],
+      "properties": {
+        "software_version": {
+          "type": "string"
+        },
+        "gdal_version": {
+          "type": "string"
+        },
+        "proj_version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

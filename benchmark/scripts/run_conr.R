@@ -99,7 +99,7 @@ for (file in files) {
       unique_coordinates = unique_coordinates,
       error = paste(errors, collapse = " | "),
       settings = spec$settings,
-      notes = "ConR pinned GitHub revision; identical occurrence coordinates",
+      notes = "ConR GitHub revision recorded in tool_revision; identical occurrence coordinates",
       stringsAsFactors = FALSE
     )
     idx <- idx + 1
